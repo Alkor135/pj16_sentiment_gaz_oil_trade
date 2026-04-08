@@ -43,5 +43,4 @@ with pd.option_context(
     "display.float_format", "{:,.2f}".format,
 ):
     print()
-    # print(df)
-    print(df[['date', 'ticker', 'model', 'prompt_tokens', 'raw_response', 'sentiment', 'body', 'next_body']])
+    print(df)

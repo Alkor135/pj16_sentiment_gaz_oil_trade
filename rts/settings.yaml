@@ -36,3 +36,12 @@ path_db_day: 'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_2025_21-00.db
 db_news_dir: 'C:/Users/Alkor/gd/db_rss'
 cache_file: 'C:/Users/Alkor/VSCode/pj14_rss_news_oil_gaz_embeded/{ticker_lc}/embeddings_ollama.pkl'
 sentiment_output_pkl: 'sentiment_scores.pkl'
+sentiment_model: 'gemma3:12b'
+
+# Окно дат для sentiment_group_stats.py
+stats_date_from: '2025-09-01'
+stats_date_to: '2027-01-01'
+
+# Окно дат для sentiment_backtest.py
+backtest_date_from: '2025-09-01'
+backtest_date_to: '2027-01-01'

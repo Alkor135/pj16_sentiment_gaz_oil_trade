@@ -1,13 +1,29 @@
+"""
+Собирает sentiment-оценки новостных markdown-файлов через локальную модель Ollama.
+Для каждого файла строит промпт, вызывает Ollama HTTP API (/api/generate)
+с детерминированными параметрами (temperature=0, top_p=1, top_k=1, seed=42)
+и парсит число от -10 до +10. Модель берётся из settings.yaml:sentiment_model.
+Результаты копятся в pickle (resume по file_path), колонки: file_path, source_date,
+ticker, model, prompt, prompt_tokens, raw_response, sentiment, processed_at.
+Дополнительно обогащает датафрейм колонками date (дата из имени md-файла),
+body (CLOSE-OPEN за ту же дату) и next_body (body следующей торговой сессии),
+подтягивая котировки из SQLite `path_db_day` для быстрого downstream-анализа.
+"""
+
 from __future__ import annotations
 
 import logging
 import pickle
 import re
+import sqlite3
 import subprocess
+
+import requests
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 import tiktoken
 import typer
@@ -110,17 +126,28 @@ def extract_date_from_path(path: Path) -> Optional[str]:
 
 
 def run_ollama(model: str, prompt: str, keepalive: Optional[str] = None, timeout: int = 600) -> str:
-    command = ["ollama", "run", model]
+    """Детерминированный вызов Ollama через HTTP API: temperature=0, seed=42."""
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0,
+            "top_p": 1,
+            "top_k": 1,
+            "seed": 42,
+        },
+    }
     if keepalive:
-        command.extend(["--keepalive", keepalive])
-    command.append(prompt)
-    logging.debug("Ollama command: %s", command)
-    result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
-    if result.returncode != 0:
-        error_message = result.stderr.strip() or result.stdout.strip()
-        raise RuntimeError(f"Ollama returned code {result.returncode}: {error_message}")
-
-    return result.stdout.strip()
+        payload["keep_alive"] = keepalive
+    logging.debug("Ollama HTTP request: model=%s", model)
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json=payload,
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return (response.json().get("response") or "").strip()
 
 
 def load_existing_results(path: Path) -> pd.DataFrame:
@@ -128,6 +155,59 @@ def load_existing_results(path: Path) -> pd.DataFrame:
         return pd.DataFrame()
     with path.open("rb") as f:
         return pd.DataFrame(pickle.load(f))
+
+
+def enrich_with_quotes(df: pd.DataFrame, quotes_path: Path) -> pd.DataFrame:
+    """Добавляет колонки date/body/next_body по дневным котировкам из SQLite."""
+    if df.empty:
+        return df
+    if not quotes_path.exists():
+        logging.warning("Файл котировок не найден: %s — пропускаю enrich", quotes_path)
+        return df
+
+    with sqlite3.connect(str(quotes_path)) as conn:
+        q = pd.read_sql_query(
+            "SELECT TRADEDATE, OPEN, CLOSE FROM Futures",
+            conn,
+            parse_dates=["TRADEDATE"],
+        )
+
+    q = q.dropna(subset=["TRADEDATE", "OPEN", "CLOSE"]).sort_values("TRADEDATE").reset_index(drop=True)
+    q["body"] = q["CLOSE"] - q["OPEN"]
+    q["date_only"] = q["TRADEDATE"].dt.date
+
+    q_dates = np.array(q["date_only"].tolist())
+    q_bodies = q["body"].to_numpy()
+
+    def body_for(d):
+        if d is None:
+            return None
+        idx = np.searchsorted(q_dates, d)
+        if idx < len(q_dates) and q_dates[idx] == d:
+            return float(q_bodies[idx])
+        return None
+
+    def next_body_for(d):
+        if d is None:
+            return None
+        idx = np.searchsorted(q_dates, d, side="right")
+        if idx < len(q_dates):
+            return float(q_bodies[idx])
+        return None
+
+    def parse_date(value):
+        if value is None:
+            return None
+        try:
+            return datetime.strptime(str(value), "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    df = df.copy()
+    df["date"] = df["source_date"].apply(parse_date)
+    df["body"] = df["date"].apply(body_for)
+    df["next_body"] = df["date"].apply(next_body_for)
+    return df
 
 
 def save_results(path: Path, df: pd.DataFrame) -> None:
@@ -143,7 +223,10 @@ def main(
         None,
         help="Файл для сохранения sentiment оценок. Если не задан, берётся из settings.yaml.",
     ),
-    model: str = typer.Option("gemma3:12b", help="Локальная модель Ollama."),
+    model: Optional[str] = typer.Option(
+        None,
+        help="Локальная модель Ollama. По умолчанию берётся из settings.yaml:sentiment_model.",
+    ),
     keepalive: str = typer.Option(
         "5m",
         help="Удерживать модель Ollama загруженной между запросами.",
@@ -166,6 +249,9 @@ def main(
     settings = load_settings()
 
     ticker = settings.get("ticker", "RTS")
+    if model is None:
+        model = settings.get("sentiment_model", "gemma3:12b")
+    logging.info("Sentiment model: %s", model)
     md_path = Path(settings.get("md_path", "."))
     sentiment_output = Path(settings.get("sentiment_output_pkl", "sentiment_scores.pkl"))
     if output_pkl is None:
@@ -229,10 +315,18 @@ def main(
         )
 
     df = pd.DataFrame(rows)
+
+    ticker_lc = settings.get("ticker_lc", ticker.lower())
+    path_db_day_tmpl = settings.get("path_db_day", "")
+    if path_db_day_tmpl:
+        quotes_path = Path(path_db_day_tmpl.format(ticker=ticker, ticker_lc=ticker_lc))
+        df = enrich_with_quotes(df, quotes_path)
+
     save_results(output_pkl, df)
     typer.echo(f"Готово: {len(df)} записей сохранено в {output_pkl}")
 
-    console_df = df[["file_path", "source_date", "ticker", "model", "sentiment", "prompt_tokens"]]
+    console_cols = ["source_date", "ticker", "model", "sentiment", "body", "next_body", "prompt_tokens"]
+    console_df = df[[c for c in console_cols if c in df.columns]]
     typer.echo("\nРезультаты:")
     typer.echo(console_df.to_string(index=False))
 

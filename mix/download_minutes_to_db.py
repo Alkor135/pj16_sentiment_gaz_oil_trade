@@ -115,7 +115,13 @@ def get_info_future(session, security):
 
     return pd.Series([shortname, lsttrade])  # Гарантируем возврат 2 значений
 
-def get_minute_candles(session, ticker: str, start_date: date, from_str: str = None, till_str: str = None) -> pd.DataFrame:
+def get_minute_candles(
+        session, 
+        ticker: str, 
+        start_date: date, 
+        from_str: str = None, 
+        till_str: str = None
+        ) -> pd.DataFrame:
     """Получает все минутные данные по фьючерсу за указанную дату с учетом пагинации"""
     if from_str is None:
         from_str = datetime.combine(start_date, time(0, 0)).isoformat()
@@ -128,7 +134,8 @@ def get_minute_candles(session, ticker: str, start_date: date, from_str: str = N
 
     while True:
         url = (
-            f'https://iss.moex.com/iss/engines/futures/markets/forts/securities/{ticker}/candles.json?'
+            f'https://iss.moex.com/iss/engines/futures/markets/forts/securities/'
+            f'{ticker}/candles.json?'
             f'interval=1&from={from_str}&till={till_str}'
             f'&start={start}'
         )
@@ -200,7 +207,8 @@ def get_future_date_results(
 
         if count == 0:
             # Нет минутных данных в БД, запрашиваем данные о торгуемых фьючерсах на дату
-            # За текущую дату торгуемые тикеры доступны после 19:05, после окончания основной сессии
+            # За текущую дату торгуемые тикеры доступны после окончания Единой Торговой Сессии (ЕТС), 
+            # после 23:50.
             request_url = (
                 f'https://iss.moex.com/iss/history/engines/futures/markets/forts/securities.json?'
                 f'date={date_str}&assetcode={ticker}'

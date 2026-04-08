@@ -209,6 +209,7 @@ __marimo__/
 # Мои настройки
 rts/log/*
 rts/plots/*
+rts/group_stats/*
 rts/*.pkl
 rts/*.xlsx
 rts/*.csv
@@ -216,18 +217,21 @@ trade/log/*
 
 mix/log/*
 mix/plots/*
+mix/group_stats/*
 mix/*.pkl
 mix/*.xlsx
 mix/*.csv
 
 ng/log/*
 ng/plots/*
+ng/group_stats/*
 ng/*.pkl
 ng/*.xlsx
 ng/*.csv
 
 br/log/*
 br/plots/*
+br/group_stats/*
 br/*.pkl
 br/*.xlsx
 br/*.csv
