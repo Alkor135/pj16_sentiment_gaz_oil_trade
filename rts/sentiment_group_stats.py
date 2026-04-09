@@ -51,12 +51,16 @@ def load_sentiment(path: Path) -> pd.DataFrame:
     return df.dropna(subset=["source_date", "sentiment", "next_body"])
 
 
-def aggregate_sentiment(df: pd.DataFrame, method: str) -> pd.DataFrame:
-    if method not in {"mean", "median", "max", "min"}:
-        raise typer.BadParameter("Метод агрегации должен быть: mean, median, max или min")
+def index_by_date(df: pd.DataFrame) -> pd.DataFrame:
+    """Индексирует pkl по source_date. В pkl уже один ряд на дату (см. sentiment_analysis.py)."""
+    if df["source_date"].duplicated().any():
+        dups = df.loc[df["source_date"].duplicated(keep=False), "source_date"].unique()
+        raise typer.BadParameter(
+            f"В pkl несколько строк за одну дату: {sorted(dups)[:5]}... "
+            "Перегенерируй pkl: sentiment_analysis.py теперь хранит одну строку на дату."
+        )
     return (
-        df.groupby("source_date")
-        .agg(sentiment=("sentiment", method), next_body=("next_body", "first"))
+        df.set_index("source_date")[["sentiment", "next_body"]]
         .sort_index()
     )
 
@@ -120,10 +124,6 @@ def main(
         exists=True,
         help="Локальный settings.yaml для тикера.",
     ),
-    aggregate_method: str = typer.Option(
-        "mean",
-        help="Метод агрегации sentiment по дате: mean, median, max, min.",
-    ),
     quantity: Optional[int] = typer.Option(
         None,
         help="Количество контрактов на сделку. По умолчанию — quantity_open из settings.yaml.",
@@ -152,7 +152,7 @@ def main(
     d_to = _parse_date(date_to if date_to is not None else settings.get("stats_date_to"))
 
     df = load_sentiment(sentiment_pkl)
-    aggregated = aggregate_sentiment(df, aggregate_method)
+    aggregated = index_by_date(df)
 
     if d_from is not None:
         aggregated = aggregated[aggregated.index >= d_from]
@@ -185,8 +185,7 @@ def main(
         "display.float_format", "{:,.2f}".format,
     ):
         typer.echo(
-            f"\n{ticker}: follow-статистика по значениям sentiment "
-            f"({aggregate_method}) | период: {period}"
+            f"\n{ticker}: follow-статистика по значениям sentiment | период: {period}"
         )
         typer.echo(grouped.to_string(index=False))
 

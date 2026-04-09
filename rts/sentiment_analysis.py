@@ -316,6 +316,18 @@ def main(
 
     df = pd.DataFrame(rows)
 
+    # Принцип "одна дата — одна строка": если несколько md-файлов дали одну source_date,
+    # оставляем последнюю обработанную (она же — самая свежая запись в rows).
+    if not df.empty and "source_date" in df.columns:
+        before = len(df)
+        df = (
+            df.sort_values("source_date", kind="stable")
+            .drop_duplicates(subset="source_date", keep="last")
+            .reset_index(drop=True)
+        )
+        if len(df) < before:
+            logging.info("Дедуп по source_date: %s -> %s строк", before, len(df))
+
     ticker_lc = settings.get("ticker_lc", ticker.lower())
     path_db_day_tmpl = settings.get("path_db_day", "")
     if path_db_day_tmpl:

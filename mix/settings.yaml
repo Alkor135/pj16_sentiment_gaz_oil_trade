@@ -7,36 +7,29 @@ ticker_open: 'MXM6'   # Фьючерс для открытия позиции (t
 quantity_close: 1
 quantity_open: 1
 
-# Выбор модели для векторизации
-#model_name: 'bge-m3'
-#model_name: 'qwen3-embedding:0.6b'
-model_name: 'embeddinggemma'
+# Модель для предсказания sentiment (для выбора правил)
+sentiment_model: 'gemma3:12b'
 
 # Выбор новостей по провайдеру
 provider: 'investing_prime_interfax'
 #provider: 'investing'
 #provider: 'prime_interfax'
 
-url_ai: 'http://localhost:11434/api/embeddings'
-min_prev_files: 2
-time_start: '21:00:00'
-time_end: '20:59:59'
+time_start: '21:00:00'  # Время начала торговой сессии (для фильтрации новостей)
+time_end: '20:59:59'  # Время окончания торговой сессии (для фильтрации новостей)
 num_mds: 200  # Количество последних интервалов (дней) для сохранения в markdown файлы
 num_dbs: 8  # Количество последних файлов БД новостей для обработки
 start_date_download_minutes: '2025-06-24'  # Дата начала загрузки минутных свечей
-start_date_test: '2025-10-01'  # Дата начала тестирования
-test_days: 23  # Количество дней для тестирования
 
 #md_path: 'C:/Users/Alkor/gd/md_rss_all'
 md_path: 'C:/Users/Alkor/gd/md_rss_all_oil_gaz'
-#md_path: 'C:/md_news/md_rss_all_oil_gaz'
-predict_path: 'C:/Users/Alkor/gd/predict_ai/{ticker_lc}_all_oil_gaz_gemma'
+
+predict_path: 'C:/Users/Alkor/gd/predict_ai/{ticker_lc}_sentiment_gemma'
 path_db_minute: 'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_minute_2025.db'
 path_db_day: 'C:/Users/Alkor/gd/data_quote_db/{ticker}_futures_day_2025_21-00.db'
-db_news_dir: 'C:/Users/Alkor/gd/db_rss'
-cache_file: 'C:/Users/Alkor/VSCode/pj14_rss_news_oil_gaz_embeded/{ticker_lc}/embeddings_ollama.pkl'
-sentiment_output_pkl: 'sentiment_scores.pkl'
-sentiment_model: 'gemma3:12b'
+db_news_dir: 'C:/Users/Alkor/gd/db_rss'  # Директория с БД новостей (sqlite файлы)
+
+sentiment_output_pkl: 'sentiment_scores.pkl'  # Файл для сохранения предсказанных sentiment (pickle)
 
 # Окно дат для sentiment_group_stats.py
 stats_date_from: '2025-09-01'
