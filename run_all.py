@@ -1,6 +1,7 @@
 """
 Мастер-скрипт для последовательного запуска пайплайна по всем тикерам.
-Порядок: sync → (download → convert → embedding → simulate → trade) × N тикеров.
+Порядок: sync → (download → convert → create_md → sentiment_analysis →
+sentiment_to_predict → trade → group_stats → backtest) × N тикеров.
 Останавливается при первой ошибке (exit code != 0).
 Запускается Планировщиком задач через одно задание.
 """

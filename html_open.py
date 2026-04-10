@@ -1,3 +1,7 @@
+"""
+Открывает HTML-отчёты бэктестов (sentiment_backtest) в новом окне Google Chrome.
+"""
+
 # import webbrowser
 # import os
 # import time

@@ -5,6 +5,7 @@
 и парсит число от -10 до +10. Модель берётся из settings.yaml:sentiment_model.
 Результаты копятся в pickle (resume по file_path), колонки: file_path, source_date,
 ticker, model, prompt, prompt_tokens, raw_response, sentiment, processed_at.
+Гарантирует принцип «одна дата — одна строка» (дедупликация по source_date, keep=last).
 Дополнительно обогащает датафрейм колонками date (дата из имени md-файла),
 body (CLOSE-OPEN за ту же дату) и next_body (body следующей торговой сессии),
 подтягивая котировки из SQLite `path_db_day` для быстрого downstream-анализа.
