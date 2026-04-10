@@ -1,0 +1,4 @@
+# trade/settings.yaml
+
+trade_path: 'C:/QUIK_VTB_2022_ИИС/algotrade'  # Путь к папке QUIK для TRI-файлов
+trade_account: 'SPBFUT16qg3'  # Торговый счёт на срочном рынке
