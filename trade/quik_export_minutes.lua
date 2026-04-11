@@ -54,7 +54,7 @@ end
 
 local function in_active_window()
     local t = os.date("*t")
-    if t.hour == 20 then return true end
+    if t.hour == 9 then return true end
     if t.hour == 21 and t.min <= 5 then return true end
     return false
 end
