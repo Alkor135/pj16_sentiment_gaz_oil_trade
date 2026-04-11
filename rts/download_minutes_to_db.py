@@ -343,6 +343,96 @@ def get_future_date_results(
 
         start_date += timedelta(days=1)
 
+def fill_today_tail_from_quik(
+        csv_path: Path,
+        connection: sqlite3.Connection,
+        cursor: sqlite3.Cursor,
+        today_date: date) -> None:
+    """
+    Добирает последние минутные бары за сегодня из CSV, который пишет
+    lua-экспортёр QUIK (trade/quik_export_minutes.lua).
+
+    ISS отдаёт минутные свечи с задержкой ≥15 минут, поэтому при запуске
+    в 21:00 бар 20:59 из ISS недоступен. QUIK видит его в реальном времени,
+    данные пишутся в CSV и здесь мержатся в sqlite.
+
+    Добавляются только минуты, которые строго позже max(TRADEDATE) в БД
+    за сегодня и не позже 20:59 (время закрытия дневного бара по settings.yaml).
+    Используется INSERT OR IGNORE: существующие ISS-бары не перезаписываются.
+
+    Любая ошибка (нет файла, устарел, повреждён, QUIK не запущен) приводит к
+    молчаливому пропуску — пайплайн run_all.py не должен падать из-за tail-fill.
+    """
+    if not csv_path.exists():
+        logger.info(f"QUIK tail-fill: CSV не найден ({csv_path}), пропускаем")
+        return
+
+    # Проверка свежести: если файл не обновлялся > 10 минут, QUIK скорее всего не пишет
+    mtime = datetime.fromtimestamp(csv_path.stat().st_mtime)
+    if (datetime.now() - mtime) > timedelta(minutes=10):
+        logger.info(f"QUIK tail-fill: CSV устарел (mtime={mtime}), пропускаем")
+        return
+
+    today_str = today_date.strftime('%Y-%m-%d')
+    cursor.execute(
+        "SELECT SECID, LSTTRADE, MAX(TRADEDATE) FROM Futures WHERE DATE(TRADEDATE) = ?",
+        (today_str,)
+    )
+    row = cursor.fetchone()
+    if not row or row[2] is None:
+        logger.info("QUIK tail-fill: в БД нет сегодняшних ISS-баров, пропускаем")
+        return
+
+    current_ticker = row[0]
+    lasttrade = row[1]
+    max_iss_dt = datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S')
+
+    cutoff = datetime.combine(today_date, time(20, 59))
+    if max_iss_dt >= cutoff:
+        logger.info(f"QUIK tail-fill: ISS уже покрывает хвост до {max_iss_dt}, не требуется")
+        return
+
+    try:
+        df_csv = pd.read_csv(csv_path)
+    except Exception as e:
+        logger.error(f"QUIK tail-fill: не удалось прочитать {csv_path}: {e}")
+        return
+
+    required_cols = {'SECID', 'TRADEDATE', 'OPEN', 'LOW', 'HIGH', 'CLOSE', 'VOLUME'}
+    if not required_cols.issubset(df_csv.columns):
+        logger.error(f"QUIK tail-fill: в CSV нет нужных колонок, есть только {list(df_csv.columns)}")
+        return
+
+    df_csv['TRADEDATE'] = pd.to_datetime(df_csv['TRADEDATE'], errors='coerce')
+    df_csv = df_csv.dropna(subset=['TRADEDATE'])
+
+    mask = (
+        (df_csv['SECID'] == current_ticker)
+        & (df_csv['TRADEDATE'].dt.date == today_date)
+        & (df_csv['TRADEDATE'] > max_iss_dt)
+        & (df_csv['TRADEDATE'] <= cutoff)
+    )
+    df_tail = df_csv.loc[mask].copy()
+    if df_tail.empty:
+        logger.info(f"QUIK tail-fill: в CSV нет новых баров после {max_iss_dt} для {current_ticker}")
+        return
+
+    df_tail['TRADEDATE'] = df_tail['TRADEDATE'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    df_tail['LSTTRADE'] = lasttrade
+    df_tail = df_tail[['TRADEDATE', 'SECID', 'OPEN', 'LOW', 'HIGH', 'CLOSE', 'VOLUME', 'LSTTRADE']]
+
+    rows_to_insert = [tuple(r) for r in df_tail.itertuples(index=False, name=None)]
+    with connection:
+        connection.executemany(
+            "INSERT OR IGNORE INTO Futures "
+            "(TRADEDATE, SECID, OPEN, LOW, HIGH, CLOSE, VOLUME, LSTTRADE) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            rows_to_insert
+        )
+    logger.info(f"QUIK tail-fill: добавлено {len(rows_to_insert)} минут "
+                f"за {today_date} ({current_ticker}, {max_iss_dt.time()} → {cutoff.time()})")
+
+
 def main(
         ticker: str = ticker,
         path_db: Path = path_db_minute,
@@ -380,6 +470,20 @@ def main(
 
         with requests.Session() as session:
             get_future_date_results(session, start_date, ticker, connection, cursor)
+
+        # Добивка последних минут сегодняшней сессии из QUIK CSV.
+        # Best-effort: любая ошибка здесь не должна валить run_all.py.
+        quik_csv_raw = settings.get('quik_csv_path')
+        if quik_csv_raw:
+            try:
+                fill_today_tail_from_quik(
+                    Path(quik_csv_raw),
+                    connection,
+                    cursor,
+                    datetime.now().date()
+                )
+            except Exception as e:
+                logger.error(f"QUIK tail-fill упал, игнорируем: {e}")
 
     except Exception as e:
         logger.error(f"Ошибка в main: {e}")
