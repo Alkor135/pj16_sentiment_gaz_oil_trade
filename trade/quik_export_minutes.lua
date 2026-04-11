@@ -6,14 +6,14 @@
     недоступных через ISS API из-за 15-минутной задержки.
 
     Запуск: "Сервисы → Lua скрипты → Добавить" в QUIK, затем "Запустить".
-    Скрипт висит весь день, но реально пишет файл только в окне 20:00–21:05 МСК.
+    Скрипт пишет файл постоянно, пока QUIK запущен — нагрузки почти нет,
+    а актуальный CSV удобно контролировать глазами в любой момент дня.
 
     Формат CSV: SECID,TRADEDATE,OPEN,LOW,HIGH,CLOSE,VOLUME
                 (колонки идентичны схеме таблицы Futures в sqlite-БД минут)
 
-    Файл перезаписывается каждые PERIOD_MS миллисекунд в активном окне и
-    всегда содержит ровно последние TAIL_BARS баров по каждому тикеру
-    (т.е. не разрастается).
+    Файл перезаписывается каждые PERIOD_MS миллисекунд и всегда содержит
+    ровно последние TAIL_BARS баров по каждому тикеру (не разрастается).
 ]]
 
 local OUT       = "C:\\Users\\Alkor\\VSCode\\pj16_sentiment_gaz_oil_trade\\trade\\quik_export\\minutes.csv"
@@ -49,14 +49,6 @@ end
 local function fmt_ts(t)
     return string.format("%04d-%02d-%02d %02d:%02d:00",
         t.year, t.month, t.day, t.hour, t.min)
-end
-
-
-local function in_active_window()
-    local t = os.date("*t")
-    if t.hour == 9 then return true end
-    if t.hour == 21 and t.min <= 5 then return true end
-    return false
 end
 
 
@@ -97,11 +89,7 @@ end
 
 function main()
     while is_run do
-        if in_active_window() then
-            pcall(dump)
-            sleep(PERIOD_MS)
-        else
-            sleep(60000)
-        end
+        pcall(dump)
+        sleep(PERIOD_MS)
     end
 end
