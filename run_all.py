@@ -22,13 +22,13 @@ SCRIPTS = [
     # r"rts\create_markdown_files.py",
     r"rts\sentiment_analysis.py",
     r"rts\sentiment_to_predict.py",
-    # r"trade\trade_rts_tri.py",
+    # r"trade\trade_rts_tri_SPBFUT192yc_ebs.py",
 
     # r"mix\download_minutes_to_db.py",
     # r"mix\convert_minutes_to_days.py",
     r"mix\sentiment_analysis.py",
     r"mix\sentiment_to_predict.py",
-    # r"trade\trade_mix_tri.py",
+    # r"trade\trade_mix_tri_SPBFUT192yc_ebs.py",
 
     r"rts\sentiment_group_stats.py",
     r"rts\sentiment_backtest.py",

@@ -3,8 +3,8 @@
 Читает предсказание текущего дня, сравнивает с предыдущим.
 Открывает позицию в предсказанную сторону.
 Поддерживает ролловер: при смене контракта закрывает старый и открывает новый.
-Конфигурация тикеров/количества в mix/settings.yaml, путь к QUIK и торговый счёт
-в trade/settings.yaml. Защита от двойной записи через маркер state/{ticker}_{date}.done.
+Конфигурация тикеров в mix/settings.yaml, количество контрактов/путь к QUIK/торговый счёт
+в trade/settings.yaml (аккаунт ebs). Защита от двойной записи через маркер state/{ticker}_{date}.done.
 Логирование с ротацией (3 файла).
 """
 
@@ -26,14 +26,16 @@ with open(trade_settings_path, encoding='utf-8') as f:
 
 ticker_close = cfg['ticker_close']
 ticker_open = cfg['ticker_open']
-quantity_close = str(cfg.get('quantity_close', 1))
-quantity_open = str(cfg.get('quantity_open', 1))
-trade_account = trade_cfg['trade_account']
+
+account = trade_cfg['accounts']['ebs']
+trade_account = account['trade_account']
+quantity_close = str(account[ticker_lc].get('quantity_close', 1))
+quantity_open = str(account[ticker_lc].get('quantity_open', 1))
 
 # Пути к файлам
 predict_path = Path(cfg['predict_path'].format(ticker_lc=ticker_lc))
 log_path = Path(__file__).parent / "log"
-trade_path = Path(trade_cfg['trade_path'])
+trade_path = Path(account['trade_path'])
 trade_filepath = trade_path / "input.tri"
 
 # Создание необходимых директорий

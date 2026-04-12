@@ -4,8 +4,6 @@ ticker: 'RTS'
 ticker_lc: 'rts'
 ticker_close: 'RIM6'  # Фьючерс для закрытия позиции (trade)
 ticker_open: 'RIM6'   # Фьючерс для открытия позиции (trade)
-quantity_close: 2
-quantity_open: 2
 quantity_test: 1  # Количество контрактов для бэктеста и аналитики
 
 # Модель для предсказания sentiment (для выбора правил)

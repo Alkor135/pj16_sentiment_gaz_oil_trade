@@ -34,8 +34,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Торговля (`trade/`)
 
-- **`trade/trade_rts_tri.py`** / **`trade/trade_mix_tri.py`** — Читают файл предсказания за сегодня и предыдущий день, сравнивают направления. При смене направления — формируют рыночные заявки в .tri-файл для QUIK (закрытие старой позиции + открытие новой). Поддержка ролловера (смена контракта). Защита от двойной записи через маркер `state/{ticker}_{date}.done`. Конфигурация тикеров/количества из `<инструмент>/settings.yaml`, путь к QUIK и торговый счёт из `trade/settings.yaml`.
-- **`trade/settings.yaml`** — Путь к папке QUIK для TRI-файлов и торговый счёт на срочном рынке.
+- **`trade/trade_rts_tri_SPBFUT192yc_ebs.py`** / **`trade/trade_mix_tri_SPBFUT192yc_ebs.py`** — Читают файл предсказания за сегодня и предыдущий день, сравнивают направления. При смене направления — формируют рыночные заявки в .tri-файл для QUIK (закрытие старой позиции + открытие новой). Поддержка ролловера (смена контракта). Защита от двойной записи через маркер `state/{ticker}_{date}.done`. Конфигурация тикеров из `<инструмент>/settings.yaml`, количество контрактов/путь к QUIK/торговый счёт из `trade/settings.yaml` (аккаунт `ebs`).
+- **`trade/settings.yaml`** — Аккаунты (`accounts → ebs/iis`), каждый содержит `trade_path`, `trade_account` и количество контрактов по инструментам (`rts`/`mix` → `quantity_close`/`quantity_open`).
 
 ### Утилиты
 
@@ -53,7 +53,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Каждая директория инструмента имеет свой `settings.yaml`:
 - `ticker` / `ticker_lc` / `ticker_close` / `ticker_open` — идентификаторы фьючерсных контрактов
-- `quantity_close` / `quantity_open` — количество контрактов для закрытия/открытия позиции
+- `quantity_test` — количество контрактов для бэктеста и аналитики
 - `sentiment_model` — модель Ollama для оценки настроения (например, `gemma3:12b`)
 - `provider` — фильтр источников новостей (`investing`, `prime_interfax`, `investing_prime_interfax`)
 - Пути к БД, markdown-файлам, pkl и predict-папке (плейсхолдеры `{ticker}` / `{ticker_lc}`)
@@ -63,7 +63,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `rules.yaml` — список правил `{min, max, action}`, где `action ∈ {follow, invert, skip}`. Матчинг по первому совпадению.
 
-`trade/settings.yaml` — путь к папке QUIK для TRI-файлов (`trade_path`) и торговый счёт (`trade_account`).
+`trade/settings.yaml` — аккаунты (`accounts → ebs/iis`), каждый содержит `trade_path`, `trade_account` и количество контрактов по инструментам.
 
 ## Основные команды
 
@@ -89,7 +89,7 @@ python rts/sentiment_walk_forward.py
 python rts/sentiment_walk_forward_analysis.py
 
 # Торговля
-python trade/trade_rts_tri.py
+python trade/trade_rts_tri_SPBFUT192yc_ebs.py
 
 # Просмотр pkl
 python rts/check_pkl.py

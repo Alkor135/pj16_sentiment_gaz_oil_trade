@@ -3,5 +3,25 @@
 # trade_path: 'C:/QUIK_VTB_2022_ИИС/algotrade'  # Путь к папке QUIK для TRI-файлов
 # trade_account: 'SPBFUT16qg3'  # Торговый счёт на срочном рынке
 
-trade_path: 'C:/QUIK_VTB_2025_ЕБС/algotrade'  # Путь к папке QUIK для TRI-файлов
-trade_account: 'SPBFUT192yc'  # Торговый счёт на срочном рынке
+# trade_path: 'C:/QUIK_VTB_2025_ЕБС/algotrade'  # Путь к папке QUIK для TRI-файлов
+# trade_account: 'SPBFUT192yc'  # Торговый счёт на срочном рынке
+
+accounts:
+  iis:                                          # QUIK ИИС
+    trade_path: 'C:/QUIK_VTB_2022_ИИС/algotrade'
+    trade_account: 'SPBFUT16qg3'
+    rts:
+      quantity_close: 2
+      quantity_open: 2
+    mix:
+      quantity_close: 1
+      quantity_open: 1
+  ebs:                                          # QUIK ЕБС
+    trade_path: 'C:/QUIK_VTB_2025_ЕБС/algotrade'
+    trade_account: 'SPBFUT192yc'
+    rts:
+      quantity_close: 2
+      quantity_open: 2
+    mix:
+      quantity_close: 1
+      quantity_open: 1

@@ -4,8 +4,6 @@ ticker: 'MIX'
 ticker_lc: 'mix'
 ticker_close: 'MXM6'  # Фьючерс для закрытия позиции (trade)
 ticker_open: 'MXM6'   # Фьючерс для открытия позиции (trade)
-quantity_close: 1
-quantity_open: 1
 quantity_test: 1  # Количество контрактов для бэктеста и аналитики
 
 # Модель для предсказания sentiment (для выбора правил)

@@ -32,7 +32,7 @@ sentiment_to_predict.py     → pkl + rules.yaml → predict/{date}.txt
 sentiment_group_stats.py    → сводка для ручного составления правил
 sentiment_backtest.py       → бэктест по rules.yaml → xlsx + HTML
 sentiment_walk_forward.py   → walk-forward валидация → xlsx + HTML
-trade/trade_rts_tri.py      → predict/{date}.txt → .tri → QUIK
+trade/trade_rts_tri_*.py    → predict/{date}.txt → .tri → QUIK
 ```
 
 ## Быстрый старт
