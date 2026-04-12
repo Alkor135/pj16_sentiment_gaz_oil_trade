@@ -21,6 +21,4 @@ rules:  # По датам с 2025-09-26 до 2026-04-05
   - {min: -10, max: -4, action: follow}
   - {min: -3,  max:  3, action: invert}
   - {min:  4,  max:  4, action: follow}
-  - {min: -3,  max:  3, action: invert}
-  - {min:  4,  max:  4, action: follow}
   - {min:  5,  max: 10, action: invert}

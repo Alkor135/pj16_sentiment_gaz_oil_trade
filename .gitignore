@@ -235,3 +235,5 @@ br/group_stats/*
 br/*.pkl
 br/*.xlsx
 br/*.csv
+
+trade/quik_export/*.csv

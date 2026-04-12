@@ -595,7 +595,7 @@ def main(
     ),
     quantity: Optional[int] = typer.Option(
         None,
-        help="Количество контрактов на сделку. По умолчанию — quantity_open из settings.yaml.",
+        help="Количество контрактов на сделку. По умолчанию — quantity_test из settings.yaml.",
     ),
     rules_yaml: Path = typer.Option(
         Path(__file__).parent / "rules.yaml",
@@ -619,7 +619,7 @@ def main(
 
     sentiment_pkl = resolve_sentiment_pkl(settings, folder)
     if quantity is None:
-        quantity = int(settings.get("quantity_open", 1))
+        quantity = int(settings.get("quantity_test", 1))
 
     rules = load_rules(rules_yaml)
 

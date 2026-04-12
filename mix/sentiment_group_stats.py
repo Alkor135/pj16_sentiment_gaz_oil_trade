@@ -126,7 +126,7 @@ def main(
     ),
     quantity: Optional[int] = typer.Option(
         None,
-        help="Количество контрактов на сделку. По умолчанию — quantity_open из settings.yaml.",
+        help="Количество контрактов на сделку. По умолчанию — quantity_test из settings.yaml.",
     ),
     date_from: Optional[str] = typer.Option(
         None,
@@ -145,7 +145,7 @@ def main(
 
     sentiment_pkl = resolve_sentiment_pkl(settings, folder)
     if quantity is None:
-        quantity = int(settings.get("quantity_open", 1))
+        quantity = int(settings.get("quantity_test", 1))
 
     # Окно дат: CLI приоритет над settings.yaml
     d_from = _parse_date(date_from if date_from is not None else settings.get("stats_date_from"))
