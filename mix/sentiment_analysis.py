@@ -7,7 +7,8 @@
 ticker, model, prompt, prompt_tokens, raw_response, sentiment, processed_at.
 Гарантирует принцип «одна дата — одна строка» (дедупликация по source_date, keep=last).
 Дополнительно обогащает датафрейм колонками date (дата из имени md-файла),
-body (CLOSE-OPEN за ту же дату) и next_body (body следующей торговой сессии),
+body (CLOSE-OPEN за ту же дату), next_body (body следующей торговой сессии)
+и next_open_to_open (OPEN_{D+2} - OPEN_{D+1} — P/L от открытия до открытия),
 подтягивая котировки из SQLite `path_db_day` для быстрого downstream-анализа.
 """
 
@@ -159,7 +160,7 @@ def load_existing_results(path: Path) -> pd.DataFrame:
 
 
 def enrich_with_quotes(df: pd.DataFrame, quotes_path: Path) -> pd.DataFrame:
-    """Добавляет колонки date/body/next_body по дневным котировкам из SQLite."""
+    """Добавляет колонки date/body/next_body/next_open_to_open по дневным котировкам из SQLite."""
     if df.empty:
         return df
     if not quotes_path.exists():
@@ -179,6 +180,7 @@ def enrich_with_quotes(df: pd.DataFrame, quotes_path: Path) -> pd.DataFrame:
 
     q_dates = np.array(q["date_only"].tolist())
     q_bodies = q["body"].to_numpy()
+    q_opens = q["OPEN"].to_numpy()
 
     def body_for(d):
         if d is None:
@@ -196,6 +198,15 @@ def enrich_with_quotes(df: pd.DataFrame, quotes_path: Path) -> pd.DataFrame:
             return float(q_bodies[idx])
         return None
 
+    def next_open_to_open_for(d):
+        """OPEN_{D+2} - OPEN_{D+1}: P/L от открытия позиции до следующего открытия."""
+        if d is None:
+            return None
+        idx = np.searchsorted(q_dates, d, side="right")
+        if idx + 1 < len(q_opens):
+            return float(q_opens[idx + 1] - q_opens[idx])
+        return None
+
     def parse_date(value):
         if value is None:
             return None
@@ -208,6 +219,7 @@ def enrich_with_quotes(df: pd.DataFrame, quotes_path: Path) -> pd.DataFrame:
     df["date"] = df["source_date"].apply(parse_date)
     df["body"] = df["date"].apply(body_for)
     df["next_body"] = df["date"].apply(next_body_for)
+    df["next_open_to_open"] = df["date"].apply(next_open_to_open_for)
     return df
 
 
@@ -338,7 +350,7 @@ def main(
     save_results(output_pkl, df)
     typer.echo(f"Готово: {len(df)} записей сохранено в {output_pkl}")
 
-    console_cols = ["source_date", "ticker", "model", "sentiment", "body", "next_body", "prompt_tokens"]
+    console_cols = ["source_date", "ticker", "model", "sentiment", "body", "next_body", "next_open_to_open", "prompt_tokens"]
     console_df = df[[c for c in console_cols if c in df.columns]]
     typer.echo("\nРезультаты:")
     typer.echo(console_df.to_string(index=False))

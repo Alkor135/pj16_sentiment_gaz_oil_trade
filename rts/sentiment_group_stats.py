@@ -1,6 +1,6 @@
 """
 Группирует значения настроений рынка по базовой follow-стратегии и считает по каждому значению:
-- count_pos: количество прибыльных дней (next_body в нужную сторону),
+- count_pos: количество прибыльных дней (next_open_to_open в нужную сторону),
 - count_neg: количество убыточных дней,
 - total_pnl: суммарный P/L при follow (LONG если s>0, SHORT если s<0).
 
@@ -8,7 +8,7 @@
 пользователь сам составляет правила в rules.yaml. Положительный total_pnl → follow,
 отрицательный → invert, ~0 или мало сделок → skip.
 
-P/L берётся из колонки next_body обогащённого pkl (sentiment_analysis.py).
+P/L берётся из колонки next_open_to_open обогащённого pkl (sentiment_analysis.py).
 Поддерживает фильтр по дате: --date-from / --date-to (переопределяют settings.yaml).
 """
 
@@ -38,17 +38,17 @@ def load_sentiment(path: Path) -> pd.DataFrame:
     with path.open("rb") as f:
         data = pickle.load(f)
     df = pd.DataFrame(data)
-    required = {"source_date", "sentiment", "next_body"}
+    required = {"source_date", "sentiment", "next_open_to_open"}
     missing = required - set(df.columns)
     if missing:
         raise typer.BadParameter(
             f"PKL не содержит обязательные колонки: {missing}. "
-            "Запусти sentiment_analysis.py, чтобы дополнить pkl колонками body/next_body."
+            "Запусти sentiment_analysis.py, чтобы дополнить pkl колонкой next_open_to_open."
         )
     df["source_date"] = pd.to_datetime(df["source_date"], errors="coerce").dt.date
     df["sentiment"] = pd.to_numeric(df["sentiment"], errors="coerce")
-    df["next_body"] = pd.to_numeric(df["next_body"], errors="coerce")
-    return df.dropna(subset=["source_date", "sentiment", "next_body"])
+    df["next_open_to_open"] = pd.to_numeric(df["next_open_to_open"], errors="coerce")
+    return df.dropna(subset=["source_date", "sentiment", "next_open_to_open"])
 
 
 def index_by_date(df: pd.DataFrame) -> pd.DataFrame:
@@ -60,7 +60,7 @@ def index_by_date(df: pd.DataFrame) -> pd.DataFrame:
             "Перегенерируй pkl: sentiment_analysis.py теперь хранит одну строку на дату."
         )
     return (
-        df.set_index("source_date")[["sentiment", "next_body"]]
+        df.set_index("source_date")[["sentiment", "next_open_to_open"]]
         .sort_index()
     )
 
@@ -82,15 +82,15 @@ def build_follow_trades(aggregated: pd.DataFrame, quantity: int) -> pd.DataFrame
         sentiment = float(row["sentiment"])
         if sentiment == 0.0:
             continue
-        next_body = float(row["next_body"])
+        next_oto = float(row["next_open_to_open"])
         direction = "LONG" if sentiment > 0 else "SHORT"
-        pnl = next_body * quantity if direction == "LONG" else -next_body * quantity
+        pnl = next_oto * quantity if direction == "LONG" else -next_oto * quantity
         rows.append(
             {
                 "source_date": source_date,
                 "sentiment": sentiment,
                 "direction": direction,
-                "next_body": next_body,
+                "next_open_to_open": next_oto,
                 "pnl": pnl,
             }
         )

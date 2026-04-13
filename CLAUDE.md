@@ -20,15 +20,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 3. **`create_markdown_files.py`** — Читает новости из SQLite БД (`rss_news_*.db`), фильтрует по ключевым словам ("нефт"/"газ") и провайдеру, группирует по торговым интервалам, создаёт один `.md` файл на торговый день.
 
-4. **`sentiment_analysis.py`** — Для каждого `.md` строит промпт и вызывает Ollama через HTTP API `/api/generate` c детерминированными параметрами (`temperature=0, top_p=1, top_k=1, seed=42`). Модель берётся из `settings.yaml:sentiment_model`. Результат — число от −10 до +10. Гарантирует принцип «одна дата — одна строка» (дедупликация по `source_date`). Обогащает pkl колонками `date`, `body`, `next_body` из дневной SQLite-БД. Resume по `file_path`.
+4. **`sentiment_analysis.py`** — Для каждого `.md` строит промпт и вызывает Ollama через HTTP API `/api/generate` c детерминированными параметрами (`temperature=0, top_p=1, top_k=1, seed=42`). Модель берётся из `settings.yaml:sentiment_model`. Результат — число от −10 до +10. Гарантирует принцип «одна дата — одна строка» (дедупликация по `source_date`). Обогащает pkl колонками `date`, `body`, `next_body`, `next_open_to_open` из дневной SQLite-БД. Resume по `file_path`.
 
 5. **`sentiment_to_predict.py`** — Читает pkl, берёт строку за сегодня, применяет `rules.yaml` → записывает файл `<predict_path>/YYYY-MM-DD.txt` с направлением (`up`/`down`). На `skip` или при отсутствии данных файл не создаётся. Идемпотентен: если файл за дату уже есть — не перезаписывает.
 
 6. **`sentiment_group_stats.py`** — Сырая сводка по значениям sentiment: `count_pos / count_neg / total_pnl` при базовой follow-стратегии. НЕ использует `rules.yaml`; выход — материал для ручного написания правил. Окно дат через `stats_date_from/stats_date_to` или CLI. Сохраняет `group_stats/sentiment_group_stats_<from>_<to>.xlsx`.
 
-7. **`sentiment_backtest.py`** — Бэктест по правилам из `rules.yaml` (`follow`/`invert`/`skip`, матч по первому совпадению). P/L считается только по `next_body` из pkl, без обращения к SQLite. Окно дат через `backtest_date_from/backtest_date_to` или CLI. Выдаёт xlsx со сделками и богатый HTML-отчёт: equity, drawdown, распределения, таблицы статистики и коэффициентов (Sharpe, Sortino, Calmar, PF, RF, Payoff, Expectancy).
+7. **`sentiment_backtest.py`** — Бэктест по правилам из `rules.yaml` (`follow`/`invert`/`skip`, матч по первому совпадению). P/L считается по `next_open_to_open` (OPEN→OPEN) из pkl, без обращения к SQLite. Окно дат через `backtest_date_from/backtest_date_to` или CLI. Выдаёт xlsx со сделками и богатый HTML-отчёт: equity, drawdown, распределения, таблицы статистики и коэффициентов (Sharpe, Sortino, Calmar, PF, RF, Payoff, Expectancy).
 
-8. **`sentiment_walk_forward.py`** — Walk-forward валидация (rolling). На train-окне для каждого целого sentiment вычисляется `sum(sign(v) * next_body)`: положительная сумма → follow, отрицательная → invert, ниже `min_trades`/`threshold` → skip. Применяется на следующем test-окне. Сравнение с in-sample правилами из `rules.yaml` и buy&hold. Выход — xlsx + HTML.
+8. **`sentiment_walk_forward.py`** — Walk-forward валидация (rolling). На train-окне для каждого целого sentiment вычисляется `sum(sign(v) * next_open_to_open)`: положительная сумма → follow, отрицательная → invert, ниже `min_trades`/`threshold` → skip. Применяется на следующем test-окне. Сравнение с in-sample правилами из `rules.yaml` и buy&hold. Выход — xlsx + HTML.
 
 9. **`sentiment_walk_forward_analysis.py`** — Читает xlsx от walk-forward и генерирует расширенный HTML-отчёт (subplot grid, таблицы статистики и коэффициентов).
 

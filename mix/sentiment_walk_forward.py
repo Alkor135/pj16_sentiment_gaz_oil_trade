@@ -1,10 +1,10 @@
 """
 Walk-forward валидация sentiment-стратегии (rolling).
-На train-окне для каждого целого значения sentiment вычисляется sum(sign(v) * next_body):
+На train-окне для каждого целого значения sentiment вычисляется sum(sign(v) * next_open_to_open):
 положительная сумма → follow, отрицательная → invert, ниже min_trades или threshold → skip.
 Выведенные правила применяются к следующему test-окну. Окно скользит с заданным шагом.
 Out-of-sample сделки всех test-окон склеиваются в единую equity curve.
-Сравнивает walk-forward P/L с in-sample правилами из rules.yaml и с buy & hold next_body.
+Сравнивает walk-forward P/L с in-sample правилами из rules.yaml и с buy & hold.
 Читает обогащённый pkl (sentiment_analysis.py), ничего не джойнит с SQLite.
 """
 
@@ -39,17 +39,17 @@ def load_sentiment(path: Path) -> pd.DataFrame:
     with path.open("rb") as f:
         data = pickle.load(f)
     df = pd.DataFrame(data)
-    required = {"source_date", "sentiment", "next_body"}
+    required = {"source_date", "sentiment", "next_open_to_open"}
     missing = required - set(df.columns)
     if missing:
         raise typer.BadParameter(
             f"PKL не содержит обязательные колонки: {missing}. "
-            "Запусти sentiment_analysis.py, чтобы дополнить pkl колонками body/next_body."
+            "Запусти sentiment_analysis.py, чтобы дополнить pkl колонкой next_open_to_open."
         )
     df["source_date"] = pd.to_datetime(df["source_date"], errors="coerce").dt.date
     df["sentiment"] = pd.to_numeric(df["sentiment"], errors="coerce")
-    df["next_body"] = pd.to_numeric(df["next_body"], errors="coerce")
-    return df.dropna(subset=["source_date", "sentiment", "next_body"])
+    df["next_open_to_open"] = pd.to_numeric(df["next_open_to_open"], errors="coerce")
+    return df.dropna(subset=["source_date", "sentiment", "next_open_to_open"])
 
 
 def index_by_date(df: pd.DataFrame) -> pd.DataFrame:
@@ -61,7 +61,7 @@ def index_by_date(df: pd.DataFrame) -> pd.DataFrame:
             "Перегенерируй pkl: sentiment_analysis.py теперь хранит одну строку на дату."
         )
     return (
-        df.set_index("source_date")[["sentiment", "next_body"]]
+        df.set_index("source_date")[["sentiment", "next_open_to_open"]]
         .sort_index()
     )
 
@@ -100,7 +100,7 @@ def build_backtest(aggregated: pd.DataFrame, quantity: int, rules: list[dict]) -
     rows = []
     for source_date, row in aggregated.iterrows():
         sentiment = float(row["sentiment"])
-        next_body = float(row["next_body"])
+        next_oto = float(row["next_open_to_open"])
         action = match_action(sentiment, rules)
         if action == "skip" or sentiment == 0.0:
             continue
@@ -108,13 +108,13 @@ def build_backtest(aggregated: pd.DataFrame, quantity: int, rules: list[dict]) -
             direction = "LONG" if sentiment > 0 else "SHORT"
         else:
             direction = "SHORT" if sentiment > 0 else "LONG"
-        pnl = next_body * quantity if direction == "LONG" else -next_body * quantity
+        pnl = next_oto * quantity if direction == "LONG" else -next_oto * quantity
         rows.append({
             "source_date": source_date,
             "sentiment": sentiment,
             "action": action,
             "direction": direction,
-            "next_body": next_body,
+            "next_open_to_open": next_oto,
             "quantity": quantity,
             "pnl": pnl,
         })
@@ -136,7 +136,7 @@ def fit_rules(train_df: pd.DataFrame, min_trades: int, threshold: float) -> dict
         if len(group) < min_trades:
             continue
         direction_sign = 1.0 if s_value > 0 else -1.0
-        sum_follow = float((direction_sign * group["next_body"]).sum())
+        sum_follow = float((direction_sign * group["next_open_to_open"]).sum())
         if sum_follow > threshold:
             fitted[float(s_value)] = "follow"
         elif sum_follow < -threshold:
@@ -149,7 +149,7 @@ def apply_fitted_rules(test_df: pd.DataFrame, fitted: dict[float, str], quantity
     rows = []
     for source_date, row in test_df.iterrows():
         s = float(row["sentiment"])
-        nb = float(row["next_body"])
+        oto = float(row["next_open_to_open"])
         action = fitted.get(s, "skip")
         if action == "skip" or s == 0.0:
             continue
@@ -157,14 +157,14 @@ def apply_fitted_rules(test_df: pd.DataFrame, fitted: dict[float, str], quantity
             direction = "LONG" if s > 0 else "SHORT"
         else:
             direction = "SHORT" if s > 0 else "LONG"
-        pnl = nb * quantity if direction == "LONG" else -nb * quantity
+        pnl = oto * quantity if direction == "LONG" else -oto * quantity
         rows.append(
             {
                 "source_date": source_date,
                 "sentiment": s,
                 "action": action,
                 "direction": direction,
-                "next_body": nb,
+                "next_open_to_open": oto,
                 "quantity": quantity,
                 "pnl": pnl,
             }
@@ -282,7 +282,7 @@ def build_report(
                 x=bh_cum.index,
                 y=bh_cum.values,
                 mode="lines",
-                name="Buy & hold next_body",
+                name="Buy & hold",
                 line=dict(color="#9e9e9e", width=2, dash="dash"),
             )
         )
@@ -427,7 +427,7 @@ def main(
     # Buy & hold на тех же test-датах
     if folds:
         bh_dates = sorted(test_dates)
-        bh_series = aggregated.loc[bh_dates, "next_body"] * quantity
+        bh_series = aggregated.loc[bh_dates, "next_open_to_open"] * quantity
     else:
         bh_series = pd.Series(dtype=float)
 
@@ -439,7 +439,7 @@ def main(
     if not bh_series.empty:
         summaries.append(
             {
-                "label": "Buy & hold next_body",
+                "label": "Buy & hold",
                 "trades": int(len(bh_series)),
                 "pnl": float(bh_series.sum()),
                 "winrate": float((bh_series > 0).mean() * 100),

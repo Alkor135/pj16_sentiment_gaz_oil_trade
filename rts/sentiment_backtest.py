@@ -1,5 +1,5 @@
 """
-Backtest sentiment-стратегии: P/L считается по next_body из pkl (ничего не джойнится с SQLite).
+Backtest sentiment-стратегии: P/L считается по next_open_to_open из pkl (ничего не джойнится с SQLite).
 Требует --rules-yaml (по умолчанию rules.yaml рядом со скриптом) со списком правил
 вида {min, max, action}, где action ∈ {follow, invert, skip}.
 follow — LONG при sentiment>0, SHORT при sentiment<0; invert — наоборот; skip — не торговать.
@@ -46,25 +46,25 @@ def resolve_sentiment_pkl(settings: dict, folder: Path) -> Path:
 
 
 def load_sentiment(path: Path) -> pd.DataFrame:
-    """Читает pkl, построенный sentiment_analysis.py. Требует колонки sentiment и next_body."""
+    """Читает pkl, построенный sentiment_analysis.py. Требует колонки sentiment и next_open_to_open."""
     if not path.exists():
         raise typer.BadParameter(f"Файл sentiment PKL не найден: {path}")
     with path.open("rb") as f:
         data = pickle.load(f)
 
     df = pd.DataFrame(data)
-    required = {"source_date", "sentiment", "next_body"}
+    required = {"source_date", "sentiment", "next_open_to_open"}
     missing = required - set(df.columns)
     if missing:
         raise typer.BadParameter(
             f"PKL не содержит обязательные колонки: {missing}. "
-            "Запусти sentiment_analysis.py, чтобы дополнить pkl колонками body/next_body."
+            "Запусти sentiment_analysis.py, чтобы дополнить pkl колонкой next_open_to_open."
         )
 
     df["source_date"] = pd.to_datetime(df["source_date"], errors="coerce").dt.date
     df["sentiment"] = pd.to_numeric(df["sentiment"], errors="coerce")
-    df["next_body"] = pd.to_numeric(df["next_body"], errors="coerce")
-    return df.dropna(subset=["source_date", "sentiment", "next_body"])
+    df["next_open_to_open"] = pd.to_numeric(df["next_open_to_open"], errors="coerce")
+    return df.dropna(subset=["source_date", "sentiment", "next_open_to_open"])
 
 
 def index_by_date(df: pd.DataFrame) -> pd.DataFrame:
@@ -76,7 +76,7 @@ def index_by_date(df: pd.DataFrame) -> pd.DataFrame:
             "Перегенерируй pkl: sentiment_analysis.py теперь хранит одну строку на дату."
         )
     return (
-        df.set_index("source_date")[["sentiment", "next_body"]]
+        df.set_index("source_date")[["sentiment", "next_open_to_open"]]
         .sort_index()
     )
 
@@ -121,7 +121,7 @@ def build_backtest(
     rows = []
     for source_date, row in aggregated.iterrows():
         sentiment = float(row["sentiment"])
-        next_body = float(row["next_body"])
+        next_oto = float(row["next_open_to_open"])
 
         action = match_action(sentiment, rules)
         if action == "skip":
@@ -134,7 +134,7 @@ def build_backtest(
         else:  # invert
             direction = "SHORT" if sentiment > 0 else "LONG"
 
-        pnl = next_body * quantity if direction == "LONG" else -next_body * quantity
+        pnl = next_oto * quantity if direction == "LONG" else -next_oto * quantity
 
         rows.append(
             {
@@ -142,7 +142,7 @@ def build_backtest(
                 "sentiment": sentiment,
                 "action": action,
                 "direction": direction,
-                "next_body": next_body,
+                "next_open_to_open": next_oto,
                 "quantity": quantity,
                 "pnl": pnl,
             }
