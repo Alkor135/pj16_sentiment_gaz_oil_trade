@@ -15,20 +15,20 @@ PYTHON = os.path.join(BASE, ".venv", "Scripts", "python.exe")
 
 # список скриптов по порядку
 SCRIPTS = [
-    # r"beget\sync_files.py",
+    r"beget\sync_files.py",
 
-    # r"rts\download_minutes_to_db.py",
-    # r"rts\convert_minutes_to_days.py",
-    # r"rts\create_markdown_files.py",
+    r"rts\download_minutes_to_db.py",
+    r"rts\convert_minutes_to_days.py",
+    r"rts\create_markdown_files.py",
     r"rts\sentiment_analysis.py",
     r"rts\sentiment_to_predict.py",
-    # r"trade\trade_rts_tri_SPBFUT192yc_ebs.py",
+    r"trade\trade_rts_tri_SPBFUT192yc_ebs.py",
 
-    # r"mix\download_minutes_to_db.py",
-    # r"mix\convert_minutes_to_days.py",
+    r"mix\download_minutes_to_db.py",
+    r"mix\convert_minutes_to_days.py",
     r"mix\sentiment_analysis.py",
     r"mix\sentiment_to_predict.py",
-    # r"trade\trade_mix_tri_SPBFUT192yc_ebs.py",
+    r"trade\trade_mix_tri_SPBFUT192yc_ebs.py",
 
     r"rts\sentiment_group_stats.py",
     r"rts\sentiment_backtest.py",
