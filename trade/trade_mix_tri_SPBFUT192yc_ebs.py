@@ -118,7 +118,7 @@ def get_next_trans_id(trade_filepath):
 
 # --- Основная логика ---
 # Защита от повторной записи: один тикер + одна дата = один маркер
-done_marker = state_path / f"{ticker_lc}_{today.strftime('%Y-%m-%d')}.done"
+done_marker = state_path / f"{ticker_lc}_{trade_account}_{today.strftime('%Y-%m-%d')}.done"
 if done_marker.exists():
     logger.info(f"Маркер {done_marker.name} уже существует — транзакция за сегодня уже записана. Пропуск.\n")
     exit(0)
