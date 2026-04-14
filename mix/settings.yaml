@@ -5,6 +5,7 @@ ticker_lc: 'mix'
 ticker_close: 'MXM6'  # Фьючерс для закрытия позиции (trade)
 ticker_open: 'MXM6'   # Фьючерс для открытия позиции (trade)
 quantity_test: 1  # Количество контрактов для бэктеста и аналитики
+notional_capital: 105000  # Условный капитал для расчёта % returns в QuantStats отчёте
 
 # Модель для предсказания sentiment (для выбора правил)
 sentiment_model: 'gemma3:12b'

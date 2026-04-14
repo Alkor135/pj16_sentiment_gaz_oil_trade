@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import quantstats_lumi as qs
 import typer
 import yaml
 
@@ -586,6 +587,18 @@ def build_report(result: pd.DataFrame, ticker: str, output_html: Path, rules_pat
         f.write("\n</body></html>")
 
 
+def build_qs_report(result: pd.DataFrame, ticker: str, output_html: Path,
+                    notional_capital: float = 1_000_000) -> None:
+    """Генерирует HTML tearsheet через quantstats-lumi."""
+    df = result.copy()
+    df["source_date"] = pd.to_datetime(df["source_date"])
+    returns = df.set_index("source_date")["pnl"] / notional_capital
+    returns.index.name = None
+    returns = returns.sort_index()
+    qs.reports.html(returns, benchmark=None, output=str(output_html),
+                    title=f"{ticker} Sentiment Backtest (QuantStats)")
+
+
 @app.command()
 def main(
     settings_yaml: Path = typer.Option(
@@ -649,6 +662,10 @@ def main(
     output_xlsx = folder / "sentiment_backtest_results.xlsx"
     result.to_excel(output_xlsx, index=False)
     build_report(result, ticker, output_html, rules_yaml)
+
+    output_qs_html = report_folder / "sentiment_backtest_qs.html"
+    notional_capital = float(settings.get("notional_capital", 1_000_000))
+    build_qs_report(result, ticker, output_qs_html, notional_capital)
 
     typer.echo(f"Готово: {output_xlsx} и {output_html}")
     typer.echo(f"Правила: {rules_yaml}")
