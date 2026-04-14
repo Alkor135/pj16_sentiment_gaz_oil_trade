@@ -317,7 +317,7 @@ def build_report(result: pd.DataFrame, ticker: str, output_html: Path, rules_pat
     fig.add_trace(
         go.Scatter(
             x=df["source_date"], y=cum,
-            mode="lines+markers", fill="tozeroy",
+            mode="lines", fill="tozeroy",
             line=dict(color="#2e7d32", width=2),
             fillcolor="rgba(46,125,50,0.15)",
             name="Equity",

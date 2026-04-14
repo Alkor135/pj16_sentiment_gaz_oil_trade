@@ -213,7 +213,7 @@ rts/group_stats/*
 rts/*.pkl
 rts/*.xlsx
 rts/*.csv
-trade/log/*
+rts/*.html
 
 mix/log/*
 mix/plots/*
@@ -221,6 +221,7 @@ mix/group_stats/*
 mix/*.pkl
 mix/*.xlsx
 mix/*.csv
+mix/*.html
 
 ng/log/*
 ng/plots/*
@@ -237,3 +238,5 @@ br/*.xlsx
 br/*.csv
 
 trade/quik_export/*.csv
+trade/log/*
+trade/state/*
