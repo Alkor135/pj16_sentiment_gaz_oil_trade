@@ -34,6 +34,8 @@ import subprocess
 files = [
     r"C:\Users\Alkor\VSCode\pj16_sentiment_gaz_oil_trade\rts\plots\sentiment_backtest.html",
     r"C:\Users\Alkor\VSCode\pj16_sentiment_gaz_oil_trade\mix\plots\sentiment_backtest.html",
+    r"C:\Users\Alkor\VSCode\pj16_sentiment_gaz_oil_trade\rts\plots\compare_strategies.html",
+    r"C:\Users\Alkor\VSCode\pj16_sentiment_gaz_oil_trade\mix\plots\compare_strategies.html",
 ]
 
 chrome = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
