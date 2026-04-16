@@ -34,7 +34,9 @@ merged = pd.merge(
 
 merged["pnl_16"] = merged["pnl_16"].fillna(0)
 merged["pnl_14"] = merged["pnl_14"].fillna(0)
-merged["pnl_combined"] = merged["pnl_16"] + merged["pnl_14"]
+# Комбинация нормируется на 1 контракт: среднее от двух сигналов,
+# чтобы масштаб совпадал с отдельными стратегиями.
+merged["pnl_combined"] = (merged["pnl_16"] + merged["pnl_14"]) / 2
 
 merged["cum_16"] = merged["pnl_16"].cumsum()
 merged["cum_14"] = merged["pnl_14"].cumsum()
@@ -114,57 +116,44 @@ stats = pd.DataFrame([
 ])
 stats_html = stats.to_html(index=False, classes="stats-table", border=0)
 
-# === Сравнительные equity-кривые ===
-fig_compare = make_subplots(
-    rows=3, cols=1,
-    subplot_titles=(
-        "pj16 Sentiment — Equity",
-        "pj14 Embedding — Equity",
-        "Комбинация — Equity",
-    ),
-    vertical_spacing=0.08,
-    shared_xaxes=True,
-)
-
+# === Сравнительные equity-кривые (все три стратегии на одном графике) ===
+fig_compare = go.Figure()
 fig_compare.add_trace(
     go.Scatter(
         x=merged["date"], y=merged["cum_16"],
-        mode="lines", fill="tozeroy",
+        mode="lines",
         line=dict(color="#2e7d32", width=2),
-        fillcolor="rgba(46,125,50,0.15)",
         name="pj16 Sentiment",
         hovertemplate="%{x|%Y-%m-%d}<br>%{y:,.0f}<extra></extra>",
-    ),
-    row=1, col=1,
+    )
 )
 fig_compare.add_trace(
     go.Scatter(
         x=merged["date"], y=merged["cum_14"],
-        mode="lines", fill="tozeroy",
+        mode="lines",
         line=dict(color="#1565c0", width=2),
-        fillcolor="rgba(21,101,192,0.15)",
         name="pj14 Embedding",
         hovertemplate="%{x|%Y-%m-%d}<br>%{y:,.0f}<extra></extra>",
-    ),
-    row=2, col=1,
+    )
 )
 fig_compare.add_trace(
     go.Scatter(
         x=merged["date"], y=merged["cum_combined"],
-        mode="lines", fill="tozeroy",
-        line=dict(color="#6a1b9a", width=2),
-        fillcolor="rgba(106,27,154,0.15)",
-        name="Комбинация",
+        mode="lines",
+        line=dict(color="#6a1b9a", width=2.5),
+        name="Комбинация (1 контракт)",
         hovertemplate="%{x|%Y-%m-%d}<br>%{y:,.0f}<extra></extra>",
-    ),
-    row=3, col=1,
+    )
 )
 fig_compare.update_layout(
-    height=900, title_text="Сравнение стратегий — RTS",
-    showlegend=False, template="plotly_white",
+    height=600, title_text="Сравнение стратегий — RTS (equity, 1 контракт)",
+    title_x=0.5,
+    showlegend=True,
+    legend=dict(orientation="h", yanchor="top", y=-0.12, xanchor="center", x=0.5),
+    template="plotly_white",
+    hovermode="x unified",
 )
-for r in range(1, 4):
-    fig_compare.update_yaxes(tickformat=",", row=r, col=1)
+fig_compare.update_yaxes(tickformat=",")
 
 # === Подробный отчёт по комбинированной стратегии ===
 pl = merged["pnl_combined"].astype(float)
